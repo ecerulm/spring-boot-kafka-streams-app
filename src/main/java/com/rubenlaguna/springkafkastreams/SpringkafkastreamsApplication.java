@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.util.PrimitiveIterator;
 import java.util.Properties;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicLong;
 
 @SpringBootApplication
 public class SpringkafkastreamsApplication implements CommandLineRunner {
@@ -44,7 +45,7 @@ public class SpringkafkastreamsApplication implements CommandLineRunner {
         LOG.info("Starting");
         Instant end = Instant.now().plus(Duration.ofMinutes(5));
         final PrimitiveIterator.OfInt rand = new Random().ints(100, 200).iterator();
-        final Counter counter = meterRegistry.counter("n_messages_processed");
+        final Counter nMessagesProcessedCounter = meterRegistry.counter("n_messages_processed");
 
 
         Topology topology = new Topology();
@@ -63,7 +64,7 @@ public class SpringkafkastreamsApplication implements CommandLineRunner {
                 "count-processor",
                 () -> new AbstractProcessor<String, String>() {
 
-                    private int counter = 0;
+                    private AtomicLong counter = new AtomicLong();
 
                     @Override
                     public void init(final ProcessorContext context) {
@@ -71,15 +72,17 @@ public class SpringkafkastreamsApplication implements CommandLineRunner {
                         context.schedule(Duration.ofSeconds(5), PunctuationType.WALL_CLOCK_TIME, new Punctuator() {
                             @Override
                             public void punctuate(long timestamp) {
-                                context.forward("", Integer.toString(counter));
-                                LOG.info("send count {}", counter);
+                                final long counterValue = counter.getAndSet(0);
+                                context.forward("", Long.toString(counterValue));
+                                LOG.info("send count {}", counterValue);
                             }
                         });
                     }
 
                     @Override
                     public void process(String key, String value) {
-                        counter++;
+                        counter.incrementAndGet();
+                        nMessagesProcessedCounter.increment(); // spring actuator metrics
                     }
                 },
                 "input-source"

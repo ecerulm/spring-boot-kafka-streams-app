@@ -7,6 +7,9 @@ The count represents the amount of records received in each 5 second interval.
 
 
 The configuration parameters can be provided via the regular mechanisms for Spring Boot applications:
+* via the `application.properties`
+* via environment variables 
+* via CLI parameters 
 
 The following configuration parameters are possible:
 
@@ -29,4 +32,27 @@ accept any server certificate from aiven.
 First download the CA cert  (`admin-cert-pem`)
 ```
 keytool -importcert -v -trustcacerts -alias AivenCARoot -file admin-cert.pem -keystore truststore.jks  -storepass YOURPASSWORD -noprompt 
+```
+
+# Spring Boot Actuator Metrics
+
+This app used Spring Actuator so you can access internal metrics via the `http://localhost:8080/actuator/metrics` endpoint.
+
+This includes a monotonically increasing counter of the number of records processed so far `n_messages_processed`.
+
+```
+curl -a localhost:8080/actuator/metrics/n_messages_processed | jq .
+
+{
+  "name": "n_messages_processed",
+  "description": null,
+  "baseUnit": null,
+  "measurements": [
+    {
+      "statistic": "COUNT",
+      "value": 1284
+    }
+  ],
+  "availableTags": []
+}
 ```
